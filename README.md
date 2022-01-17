@@ -1,30 +1,30 @@
 # Valuation 
 
 ## Problem
-If all calculation requests will be sent to Grid Computing from orchestrator, fast requests (e.g. calculation time within 1 minute) may be blocked by slow requests (e.g. calculation time in hours).
+If all calculation requests will be sent to Grid Computing from Orchestrator, fast requests (e.g. calculation time within 1 minute) may be blocked by slow requests (e.g. calculation time in hours).
 
 
 ## Solution
 I can introduce some strategy class to differentiate between fast and slow requests first.
-- In this code, I create an over-simplified ProductFastSlowExecutionStrategy class, which differentiate fast and slow requests by product type.
+- In this project, I create an over-simplified ProductFastSlowExecutionStrategy class, which differentiate fast and slow requests by product type.
 
-By injecting strategy object into Orchestrator, it can use the strategy to classify the requests: 
-- If the requests are identified as fast, send it to a separate message queue, and it can be picked up some engine(s) outsides Grid Computing.
-- Instead, if the requests are identified as slow, keep it to be processed by Grid Computing.
+By injecting strategy object into Orchestrator, it can use the strategy to classify the request: 
+- If the request is identified as fast, send it to a separate message queue, and it can then be picked up by engine outsides the Grid
+- If the request is identified as slow, keep it to be processed by engine within the Grid
 
 
-## Components
+## Major Components
 
 ### Orchestrator
 This component provides the service (single-threaded request processor) to:
 - read incoming valuation request from the designated message queue
-- send command to target queue based on the provided execution strategy
+- send command message to target queue (to be picked up by engine) based on the provided execution strategy
  
 ### Engine Manager
-This component provides the service (multi-threaded engines) to:
-- read command from the designated message queue
+This component provides the services (multi-threaded engines) to:
+- read command message from the designated message queue
 - perform calculation
-- send to result queue which client can poll/be notified for the results
+- send to result queue which client can poll/be notified for the result
 
 ## Architecture
 Event-Driven architecture
