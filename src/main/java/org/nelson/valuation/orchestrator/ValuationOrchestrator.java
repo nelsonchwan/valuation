@@ -32,6 +32,8 @@ public class ValuationOrchestrator {
 
     private List<Future> taskList;
 
+    private boolean isStarted = false;
+
 
     public ValuationOrchestrator(
             BlockingQueue<ValuationRequest> valuationRequestQueue,
@@ -58,31 +60,41 @@ public class ValuationOrchestrator {
         taskList = new ArrayList<>(numValuationRequestProcessingService);
     }
 
-    public void start() {
-        ValuationLogger.info("Orchestrator starting...");
+    public synchronized void start() {
+        if (!isStarted) {
+            ValuationLogger.info("Orchestrator starting...");
 
-        valuationRequestProcessingService = Executors.newFixedThreadPool(
-                numValuationRequestProcessingService,
-                new CustomThreadFactory("Request Processor ")
-        );
+            valuationRequestProcessingService = Executors.newFixedThreadPool(
+                    numValuationRequestProcessingService,
+                    new CustomThreadFactory("Request Processor ")
+            );
 
-        for (int i=0; i<numValuationRequestProcessingService; i++) {
-            Future submittedTask = valuationRequestProcessingService.submit(new ValuationRequestProcessingTask(
-                    valuationRequestQueue,
-                    fastCalculationQueue,
-                    slowCalculationQueue,
-                    executionStrategy
-            ));
-            taskList.add(submittedTask);
+            for (int i=0; i<numValuationRequestProcessingService; i++) {
+                Future submittedTask = valuationRequestProcessingService.submit(new ValuationRequestProcessingTask(
+                        valuationRequestQueue,
+                        fastCalculationQueue,
+                        slowCalculationQueue,
+                        executionStrategy
+                ));
+                taskList.add(submittedTask);
 
+            }
+
+            isStarted = true;
+            ValuationLogger.info("Orchestrator started!");
         }
-
-        ValuationLogger.info("Orchestrator started!");
     }
 
-    public void stop() {
-        taskList.forEach(task -> task.cancel(true));
-        valuationRequestProcessingService.shutdown();
+    public synchronized void stop() {
+        if (isStarted) {
+            taskList.forEach(task -> task.cancel(true));
+            valuationRequestProcessingService.shutdown();
+            isStarted = false;
+        }
+    }
+
+    public boolean isStarted() {
+        return isStarted;
     }
 
 }

@@ -27,6 +27,8 @@ public class EngineManager {
 
     private List<Future> engineTaskList;
 
+    private boolean isStarted = false;
+
 
     public EngineManager(
             String engineManagerName,
@@ -42,29 +44,39 @@ public class EngineManager {
         engineTaskList = new ArrayList<>(numEngines);
     }
 
-    public void start() {
-        ValuationLogger.info(engineManagerName + " starting...");
+    public synchronized void start() {
+        if (!isStarted) {
+            ValuationLogger.info(engineManagerName + " starting...");
 
-        valuationEngineService = Executors.newFixedThreadPool(
-                numEngines,
-                new CustomThreadFactory(engineManagerName + " engine #")
-        );
+            valuationEngineService = Executors.newFixedThreadPool(
+                    numEngines,
+                    new CustomThreadFactory(engineManagerName + " engine #")
+            );
 
-        for (int i=0; i<numEngines; i++) {
-            Future submittedTask = valuationEngineService.submit(new ValuationEngine(
-                    engineManagerName,
-                    inQueue,
-                    resultQueue
-            ));
-            engineTaskList.add(submittedTask);
+            for (int i=0; i<numEngines; i++) {
+                Future submittedTask = valuationEngineService.submit(new ValuationEngine(
+                        engineManagerName,
+                        inQueue,
+                        resultQueue
+                ));
+                engineTaskList.add(submittedTask);
+            }
+
+            isStarted = true;
+            ValuationLogger.info(engineManagerName + " started!");
         }
-
-        ValuationLogger.info(engineManagerName + " started!");
     }
 
-    public void stop() {
-        engineTaskList.forEach(task -> task.cancel(true));
-        valuationEngineService.shutdown();
+    public synchronized void stop() {
+        if (isStarted) {
+            engineTaskList.forEach(task -> task.cancel(true));
+            valuationEngineService.shutdown();
+            isStarted = false;
+        }
+    }
+
+    public boolean isStarted() {
+        return isStarted;
     }
 
 }
